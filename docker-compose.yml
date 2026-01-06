@@ -1,0 +1,32 @@
+services:
+  frontend:
+    build: ./job-hub-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./job-hub-frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+  backend:
+    build: ./job-hub-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./job-hub-backend:/app
+      - /app/node_modules
+    env_file:
+      - ./job-hub-backend/.env
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
