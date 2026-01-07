@@ -3,6 +3,7 @@ import axios from "axios";
 
 function App() {
   const [message, setMessage] = useState("loading...");
+  const [user, setUser] = useState("asdf");
 
   useEffect(() => {
     axios
