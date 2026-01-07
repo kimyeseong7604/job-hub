@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   frontend:
     build: ./job-hub-frontend
@@ -19,6 +17,7 @@ services:
       - "3000:3000"
     volumes:
       - ./job-hub-backend:/app
+      - /app/node_modules
     env_file:
       - ./job-hub-backend/.env
     depends_on:

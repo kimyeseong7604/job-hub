@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { User } from "../models/User";
+import { User } from "../models/User.js";
 
 // 모든 사용자 조회
 export const getAllUsers = async (req: Request, res: Response) => {
