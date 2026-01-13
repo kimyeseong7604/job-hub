@@ -1,33 +1,89 @@
-import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
-import { mockPostings } from "../shared/mock/postings";
+// src/pages/PostingDetailPage.tsx
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { getPostingDetail, type PostingDetail } from "../api/postings";
+import { useBoardStore } from "../shared/store/boardStore";
+
+type Summary = NonNullable<PostingDetail["summary"]>;
+
+const summaryLabels: { key: keyof Summary; label: string }[] = [
+  { key: "업무", label: "업무" },
+  { key: "자격요건", label: "자격요건" },
+  { key: "우대사항", label: "우대사항" },
+  { key: "기술스택", label: "기술스택" },
+  { key: "전형절차", label: "전형절차" },
+  { key: "마감상세", label: "마감상세" },
+];
 
 export default function PostingDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const addCard = useBoardStore((s) => s.addCard);
 
-  const posting = useMemo(() => mockPostings.find((p) => p.id === id), [id]);
+  const postingId = id ?? "";
 
-  if (!posting) {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["postingDetail", postingId],
+    queryFn: () => getPostingDetail(postingId),
+    enabled: Boolean(postingId),
+  });
+
+  if (isLoading) return <div style={{ color: "#666" }}>불러오는 중...</div>;
+
+  if (isError) {
     return (
       <div style={{ display: "grid", gap: 12 }}>
         <h2 style={{ fontSize: 24, fontWeight: 800 }}>공고 상세</h2>
-        <div>공고를 찾지 못했어.</div>
+        <div style={{ color: "#c00" }}>
+          조회 실패: {(error as Error)?.message ?? "unknown error"}
+        </div>
         <Link to="/postings">← 목록으로</Link>
       </div>
     );
   }
+
+  if (!data) {
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        <h2 style={{ fontSize: 24, fontWeight: 800 }}>공고 상세</h2>
+        <div>공고 데이터가 없어요.</div>
+        <Link to="/postings">← 목록으로</Link>
+      </div>
+    );
+  }
+
+  const handleCreateApplication = () => {
+    addCard({
+      postingId: data._id,
+      company: data.company,
+      title: data.title,
+      deadline: data.deadline ?? "-",
+      status: "INTEREST",
+    });
+    navigate("/board");
+  };
+
+  const summary: Summary | null = data.summary ?? null;
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <Link to="/postings">← 목록으로</Link>
 
       <div>
-        <h2 style={{ fontSize: 26, fontWeight: 900 }}>{posting.title}</h2>
-        <div style={{ marginTop: 6, color: "#555" }}>{posting.company}</div>
+        <h2 style={{ fontSize: 26, fontWeight: 900 }}>{data.title}</h2>
+        <div style={{ marginTop: 6, color: "#555" }}>{data.company}</div>
+
+        {data.link && (
+          <div style={{ marginTop: 8 }}>
+            <a href={data.link} target="_blank" rel="noreferrer">
+              원문 링크 열기
+            </a>
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {posting.techStack.map((t) => (
+        {(data.techStack ?? []).map((t) => (
           <span
             key={t}
             style={{
@@ -43,18 +99,33 @@ export default function PostingDetailPage() {
       </div>
 
       <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 16 }}>
-        <div style={{ fontWeight: 800, marginBottom: 8 }}>AI 요약 (목업)</div>
+        <div style={{ fontWeight: 800, marginBottom: 8 }}>AI 요약</div>
+
         <ul style={{ margin: 0, paddingLeft: 18, color: "#333", display: "grid", gap: 6 }}>
-          <li>업무: React 기반 채용 공고 탐색/관리 화면 개발</li>
-          <li>자격요건: TS/React 경험</li>
-          <li>우대사항: React Query, 상태관리 경험</li>
-          <li>기술스택: {posting.techStack.join(", ")}</li>
-          <li>전형절차: 서류 → 과제/코테 → 면접</li>
-          <li>마감상세: {posting.deadline}</li>
+          {summaryLabels.map(({ key, label }) => {
+            const value = summary?.[key];
+            return (
+              <li key={String(key)}>
+                {label}: {typeof value === "string" && value.trim() ? value : "-"}
+              </li>
+            );
+          })}
+
+          {/* 요약에 기술스택이 비어있으면 fallback */}
+          {(!summary?.기술스택 || summary.기술스택.trim() === "") && (
+            <li>기술스택: {(data.techStack ?? []).join(", ") || "-"}</li>
+          )}
+
+          {/* 요약에 마감상세가 비어있으면 fallback */}
+          {(!summary?.마감상세 || summary.마감상세.trim() === "") && (
+            <li>마감상세: {data.deadline ?? "-"}</li>
+          )}
         </ul>
       </div>
 
       <button
+        type="button"
+        onClick={handleCreateApplication}
         style={{
           border: "1px solid #ddd",
           borderRadius: 12,
@@ -64,9 +135,8 @@ export default function PostingDetailPage() {
           background: "white",
           width: "fit-content",
         }}
-        onClick={() => alert("지원 만들기 (다음 단계에서 연결)")}
       >
-        지원 만들기
+        <b>⭐</b>
       </button>
     </div>
   );
