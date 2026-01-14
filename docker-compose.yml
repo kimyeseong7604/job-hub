@@ -24,6 +24,7 @@ services:
       - mongo
     environment:
       - NODE_ENV=development
+    command: npm run dev
 
   mongo:
     image: mongo:7
